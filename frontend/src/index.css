@@ -1,0 +1,6 @@
+/* Reset only — the Prototype_V2 component manages its own styles inline */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}

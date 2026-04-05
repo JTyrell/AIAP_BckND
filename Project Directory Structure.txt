@@ -1,0 +1,24 @@
+aiap_backend/
+├── app.py                     # Flask entry point
+├── requirements.txt
+├── config.py                  # App config (SECRET_KEY, DB URI)
+├── routes/
+│   ├── __init__.py
+│   ├── public.py              # Customer-facing endpoints
+│   ├── staff.py               # Ops dashboard endpoints
+│   └── data_ingest.py         # CSV upload & processing endpoints
+├── ml_engine/
+│   ├── __init__.py
+│   ├── feature_engineering.py # Core feature creation (from PDF)
+│   ├── models.py              # Model definitions & training logic
+│   ├── pipeline.py            # End-to-end training + inference pipeline
+│   └── saved_models/          # ← directory (auto-created)
+│       ├── health_model.joblib
+│       ├── activity_model.joblib
+│       ├── cash_depletion_model.joblib
+│       └── scaler.joblib
+├── utils/
+│   ├── auth.py                # JWT & RBAC helpers
+│   └── db.py                  # PostgreSQL connection helper
+└── data/
+    └── raw/                   # ← where uploaded CSVs go (optional, for debugging)

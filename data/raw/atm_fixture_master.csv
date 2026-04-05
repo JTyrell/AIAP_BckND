@@ -1,0 +1,7 @@
+atm_id,name,short,manufacturer,model,lat,lng,street,building,services,card_types,currency
+ATM-001,Main Library Entrance,Library,NCR,SelfServ 87,17.3985,-76.5492,Ring Road,Faculty of Engineering,Cash Withdrawal;Balance Inquiry;Fund Transfer;Mini Statement,Visa;Mastercard;Maestro;LINX,JMD
+ATM-002,Student Union Ground Floor,Student Union,Diebold,Nixdorf DN Series,17.3991,-76.5478,University Avenue,Student Union Complex,Cash Withdrawal;Cash Deposit;Balance Inquiry;Fund Transfer,Visa;Mastercard;Maestro;LINX;JCB,JMD
+ATM-003,Faculty of Medical Sciences,Med Sciences,Hyosung,MoniMax 7600,17.3978,-76.5501,Mona Road,Medical Sciences Block,Cash Withdrawal;Balance Inquiry,Visa;Mastercard;LINX,JMD
+ATM-004,Administration Building,Admin Block,NCR,SelfServ 84,17.3995,-76.5488,Chancellor Drive,Administration Complex,Cash Withdrawal;Fund Transfer;Balance Inquiry,Visa;Mastercard;Maestro;LINX,JMD
+ATM-005,Sports Complex,Sports Complex,Wincor,ProCash 2050,17.3972,-76.5469,Stadium Road,UWI Sports & Cultural Centre,Cash Withdrawal;Balance Inquiry,Visa;Mastercard;LINX,JMD
+ATM-006,Canteen & Dining Area,Canteen,Diebold,Nixdorf CS 300,17.3988,-76.5462,Union Road,Campus Dining Block,Cash Withdrawal;Cash Deposit;Balance Inquiry,Visa;Mastercard;Maestro;LINX,JMD
