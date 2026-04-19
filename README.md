@@ -1,65 +1,33 @@
 # AIAP: ATM Intelligence and Availability Platform
-**Technical Overview & Operations Walkthrough**
 
-AIAP is a predictive maintenance and decision support platform for ATM fleets. Using historical telemetry, failure logs, and cash distributions, it operates machine learning engines to forecast hardware faults and cash depletion *before* they impact user experience. 
-
-This guide serves as a technical walkthrough on the system's architecture, ML integration, and instructions for operating the platform locally.
+Project: An ATM Intelligence & Availability Platform (AIAP), a decision-support system designed to transform raw ATM operational data into meaningful insights. The system collects ATM status and activity data using low-risk, read-only methods and processes this data to generate health scores, predictive alerts and performance analytics.
 
 ---
 
-## 1. System Architecture
+##  Quick Start for Testing
 
-The AIAP platform follows a decoupled architecture tailored for ML inference scaling:
-
-- **Frontend (`/frontend`)**: React & Vite, styled with Tailwind principles. Provides dual interfaces: an Operations Dashboard for fleet-wide telemetry, and a Customer Finder map.
-- **Backend (`app.py`)**: A Flask-based REST layer exposing telemetry routes and ML predictions.
-- **ML Engine (`/ml_engine`)**: The analytical core computing Random Forest regressions (Health), LassoCV (Cash forecasting), XGBoost (Failure prediction), and KMeans (Activity profiling).
-- **Data Layer (`/data/raw`)**: File-based ingestion module (designed for future Data Provider integrations).
-
----
-
-## 2. The Data Pipeline (DataProviders)
-
-To easily switch between offline training (local CSVs) and live API ingestion (External Data Providers), AIAP utilizes an abstract `DataProvider` interface.
-
-### The Ingestion Flow
-`ml_engine/data_provider.py` oversees how the ML Engine interprets records.
-
-1. **`FileDataProvider` (Default)**: Automatically reads granular raw datasets (`transactions.csv`, `operational_logs.csv`, `cash_status.csv`, `maintenance_records.csv`) directly from `/data/raw/` and synthesizes them in-memory into the daily time-series metrics matrix expected by the ML Engine framework.
-2. **`DPDataProvider` (Future-proof Stub)**: A placeholder designed to easily swap in REST/GraphQL data pipelines from external IT/Fleet software without refactoring the AI modeling layers.
-
-To toggle the active Data Provider, update the `.env` variable or `config.py`:
-```env
-DATA_SOURCE="file" # Or "dp"
-```
-
----
-
-## 3. Local Setup & Initialization
-
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
-
-### Step 1: Initialize the Machine Learning Backend
-Ensure you are in the root `AIAP_BckND` directory.
+### 1. Backend & ML Engine
 ```bash
-# Install required ML libraries and Flask
+# Install dependencies
 pip install -r requirements.txt
 
-# Start the Flask API and ML inference engine
+# Start the Flask API (Default port: 5001)
 python app.py
 ```
-*Note: The platform is port-agnostic but typically runs on `http://127.0.0.1:5000`.*
 
-### Step 2: Initialize the Frontend Prototype
-In a separate terminal window, launch the user interfaces:
+### 2. Frontend Operations & Customer UI
 ```bash
 cd frontend
+
+# Install & Launch
 npm install
 npm run dev
 ```
-Access the application at `http://localhost:5173`.
+
+**Access Points:**
+- **Customer Finder**: `http://localhost:5173` (Select "Customer" at login)
+- **Operations Dashboard**: `http://localhost:5173` (Select "Ops" at login)
+- **API Documentation**: `http://127.0.0.1:5001/api/v1/public/atms`
 
 ---
 
