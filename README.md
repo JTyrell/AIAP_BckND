@@ -23,12 +23,6 @@ cd frontend
 npm install
 npm run dev
 ```
-
-**Access Points:**
-- **Customer Finder**: `http://localhost:5173` (Select "Customer" at login)
-- **Operations Dashboard**: `http://localhost:5173` (Select "Ops" at login)
-- **API Documentation**: `http://127.0.0.1:5001/api/v1/public/atms`
-
 ---
 
 ## 4. Usage & Operations
