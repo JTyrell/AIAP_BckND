@@ -69,9 +69,9 @@ def get_atms():
 
         results.append({
             "id": str(row.get('atm_id', '')).strip(),
-            "name": str(row.get('name', '')).strip(),
-            "short": str(row.get('short', '')).strip(),
-            "building": str(row.get('building', '')).strip(),
+            "name": str(row.get('location', '')).strip(),
+            "short": str(row.get('atm_bank', '')).strip(),
+            "building": str(row.get('location', '')).strip(),
             "status": row.get('operational_status', 'in_service'),
             "health": pred["health_score"],
             "activity_level": pred["activity_level"],
@@ -109,9 +109,9 @@ def get_atm_detail(atm_id):
 
     return jsonify({
         "id": atm_id,
-        "name": master.get('name', ''),
-        "building": master.get('building', ''),
-        "street": master.get('street', ''),
+        "name": master.get('location', ''),
+        "building": master.get('location', ''),
+        "street": master.get('location', ''),
         "services": master.get('services', ''),
         "card_types": master.get('card_types', ''),
         "status": pred.get('operational_status', 'in_service'),

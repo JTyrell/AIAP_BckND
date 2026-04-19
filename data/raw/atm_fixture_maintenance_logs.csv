@@ -1,7 +1,0 @@
-atm_id,service_date,service_type,description
-ATM-001,2026-02-14,preventive,Preventive maintenance
-ATM-002,2026-01-22,preventive,Preventive maintenance
-ATM-003,2026-02-20,preventive,Preventive maintenance
-ATM-004,2025-12-18,corrective,Corrective maintenance
-ATM-005,2026-02-10,preventive,Preventive maintenance
-ATM-006,2026-02-05,preventive,Preventive maintenance

@@ -54,10 +54,9 @@ def train_all_models(df=None, repository=None):
 
     # ── Load data ────────────────────────────────────────────────────────
     if df is None:
-        if repository is None:
-            from utils.repository import get_repository
-            repository = get_repository()
-        df = repository.get_metrics_with_maintenance(days=None)
+        from ml_engine.data_provider import get_data_provider
+        provider = get_data_provider()
+        df = provider.get_data(days=None)
 
     if df.empty:
         logger.warning("[TRAINING] No training data available. Skipping.")
@@ -210,18 +209,18 @@ def train_all_models(df=None, repository=None):
 #  Inference
 # ─────────────────────────────────────────────────────────────────────────────
 
-def predict_for_atm(atm_id, repository=None):
+def predict_for_atm(atm_id, data_provider=None):
     """
     Run inference for one ATM. Returns a prediction dict matching
     the API contract expected by Prototype_V2.jsx.
     """
-    if repository is None:
-        from utils.repository import get_repository
-        repository = get_repository()
+    if data_provider is None:
+        from ml_engine.data_provider import get_data_provider
+        data_provider = get_data_provider()
 
-    df = repository.get_metrics_with_maintenance(
-        atm_id=atm_id, days=90,
-    )
+    df = data_provider.get_data(days=90)
+    if not df.empty:
+        df = df[df['atm_id'] == atm_id]
     if df.empty:
         raise ValueError(f"No data found for ATM {atm_id}")
 

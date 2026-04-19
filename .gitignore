@@ -1,0 +1,52 @@
+# Environments
+.env
+.env.bak
+.env.example
+*.env
+
+# Dependencies
+node_modules/
+dist/
+jspm_packages/
+bower_components/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+.venv/
+ENV/
+
+# Large Data & Augmented Results
+augmented_data/
+data/raw_backup/
+*.xlsx
+*.csv
+
+# System / IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.bak
+*.tmp
+*.log

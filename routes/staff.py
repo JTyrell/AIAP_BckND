@@ -96,9 +96,10 @@ def get_fleet_health():
 
         results.append({
             "id": atm_id,
-            "name": row.get('name', ''),
-            "manufacturer": row.get('manufacturer', ''),
-            "model": row.get('model', ''),
+            "bank_name": row.get('atm_bank', ''),
+            "location": row.get('location', ''),
+            "manufacturer": row.get('atm_bank', ''),
+            "model": row.get('atm_model', ''),
             "status": row.get('operational_status', 'in_service'),
             "health_score": pred['health_score'],
             "failure_probability": pred['failure_probability'],

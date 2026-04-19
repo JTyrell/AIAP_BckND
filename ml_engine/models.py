@@ -1,6 +1,6 @@
 """
 AIAP ML Engine — Model Definitions
-PDF Section 6.1–6.3: feature groups and model architectures.
+Feature groups and model architectures.
 """
 import joblib
 import numpy as np

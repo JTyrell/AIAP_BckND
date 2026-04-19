@@ -13,9 +13,27 @@ bp = Blueprint('data_ingest', __name__, url_prefix='/api/v1/data')
 
 ALLOWED_EXTENSIONS = {'csv'}
 
+# Map of recognisable dataset types by their required column signatures
+DATASET_SIGNATURES = {
+    'cash_status': {'atm_id', 'timestamp', 'remaining_cash'},
+    'operational_logs': {'atm_id', 'timestamp', 'uptime_status'},
+    'transactions': {'atm_id', 'transaction_time', 'withdrawal_amount'},
+    'maintenance_records': {'atm_id', 'maintenance_date', 'maintenance_type'},
+    'atm_metadata': {'atm_id', 'atm_bank', 'location', 'atm_model'},
+}
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def detect_dataset_type(columns):
+    """Detect dataset type from column names."""
+    col_set = set(columns)
+    for dtype, sig in DATASET_SIGNATURES.items():
+        if sig.issubset(col_set):
+            return dtype
+    return None
 
 
 @bp.route('/upload/metrics', methods=['POST'])
@@ -38,36 +56,57 @@ def upload_metrics_csv():
     try:
         df = pd.read_csv(filepath)
 
-        # Validate required columns (per schema)
-        required = [
-            'atm_id', 'record_date', 'uptime_percentage',
-            'error_count', 'transaction_count',
-            'starting_cash_balance', 'ending_cash_balance',
-        ]
-        missing = [c for c in required if c not in df.columns]
-        if missing:
-            return jsonify({"error": f"Missing columns: {missing}"}), 400
+        # Auto-detect dataset type from columns
+        dataset_type = detect_dataset_type(df.columns)
 
-        # Clean & standardize
-        df['record_date'] = pd.to_datetime(df['record_date'])
-        df = df.dropna(subset=['atm_id'])
+        if dataset_type is None:
+            # Check for legacy aggregated metrics format
+            legacy_required = [
+                'atm_id', 'record_date', 'uptime_percentage',
+                'error_count', 'transaction_count',
+                'starting_cash_balance', 'ending_cash_balance',
+            ]
+            missing = [c for c in legacy_required if c not in df.columns]
+            if missing:
+                accepted = list(DATASET_SIGNATURES.keys())
+                return jsonify({
+                    "error": f"Unrecognised CSV schema. Accepted types: {accepted}. "
+                             f"Or legacy metrics format with columns: {legacy_required}"
+                }), 400
+            dataset_type = "legacy_metrics"
 
-        # Persist via repository (stub logs warning; Postgres inserts)
-        repo = get_repository()
-        rows = repo.save_metrics(df)
+        # Save to the canonical filename for the detected type
+        if dataset_type != "legacy_metrics":
+            canonical_path = os.path.join('data', 'raw', f'{dataset_type}.csv')
+            if filepath != canonical_path:
+                # Append to existing file if it exists, otherwise create new
+                if os.path.exists(canonical_path):
+                    existing = pd.read_csv(canonical_path)
+                    combined = pd.concat([existing, df], ignore_index=True)
+                    combined.drop_duplicates(inplace=True)
+                    combined.to_csv(canonical_path, index=False)
+                    rows = len(combined) - len(existing)
+                else:
+                    df.to_csv(canonical_path, index=False)
+                    rows = len(df)
+            else:
+                rows = len(df)
+        else:
+            rows = len(df)
 
-        # Trigger model retraining on the uploaded data
+        # Trigger model retraining
         try:
-            result = train_all_models(df=df)
+            result = train_all_models()
             status = "success"
-            msg = "Data ingested and models retrained."
+            msg = f"Ingested {dataset_type} data ({rows} new rows) and retrained models."
         except Exception as e:
             status = "partial"
-            msg = f"Data ingested but model training failed: {str(e)}"
+            msg = f"Ingested {dataset_type} data ({rows} new rows) but model training failed: {str(e)}"
 
         return jsonify({
             "status": status,
             "message": msg,
+            "dataset_type": dataset_type,
             "rows_processed": rows,
         }), 201
 

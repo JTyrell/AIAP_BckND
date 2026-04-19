@@ -72,7 +72,7 @@ class StubRepository:
 
     # ── ATM master ───────────────────────────────────────────────────────
     def get_atm_master(self, atm_id=None):
-        df = _load_fixture(Config.FIXTURE_MASTER_CSV)
+        df = _load_fixture(Config.ATM_METADATA_CSV)
         if df.empty:
             return df
         if atm_id:
@@ -81,57 +81,27 @@ class StubRepository:
 
     # ── Daily metrics ────────────────────────────────────────────────────
     def get_daily_metrics(self, atm_id=None, days=30):
-        df = _load_fixture(
-            Config.FIXTURE_METRICS_CSV,
-            parse_dates=['record_date'],
-        )
+        from ml_engine.data_provider import get_data_provider
+        df = get_data_provider().get_data(days=days)
+
         if df.empty:
             return df
 
-        # Apply Gaussian perturbation (±0.5% uptime, ±2% cash)
-        df = _perturb(df, ['uptime_percentage', 'uptime_minutes'], 0.005)
-        df = _perturb(df, ['error_count'], 0.02)
-        df = _perturb(df, ['transaction_count'], 0.01)
-        df = _perturb(
-            df, ['starting_cash_balance', 'ending_cash_balance'], 0.02,
-        )
-
-        # Clamp to valid ranges
-        df['uptime_percentage'] = df['uptime_percentage'].clip(0, 100)
-        df['error_count'] = df['error_count'].clip(lower=0).round(0).astype(int)
-        df['transaction_count'] = df['transaction_count'].clip(lower=0).round(0).astype(int)
-        df['starting_cash_balance'] = df['starting_cash_balance'].clip(lower=0).round(0).astype(int)
-        df['ending_cash_balance'] = df['ending_cash_balance'].clip(lower=0).round(0).astype(int)
-
-        # Time-aware: if latest date < today, append a synthetic "today" row
-        today = pd.Timestamp.now().normalize()
-        max_date = df['record_date'].max()
-        if max_date < today:
-            yesterday = df.loc[df['record_date'] == max_date].copy()
-            if not yesterday.empty:
-                yesterday['record_date'] = today
-                yesterday = _perturb(
-                    yesterday,
-                    ['uptime_percentage', 'error_count',
-                     'transaction_count', 'ending_cash_balance'],
-                    0.01,
-                )
-                df = pd.concat([df, yesterday], ignore_index=True)
-
         if atm_id:
             df = df[df['atm_id'] == atm_id]
-        if days and not df.empty:
-            max_date = df['record_date'].max()
-            cutoff = max_date - pd.Timedelta(days=days)
-            df = df[df['record_date'] >= cutoff]
+
         return df.reset_index(drop=True)
 
     # ── Maintenance logs ─────────────────────────────────────────────────
     def get_maintenance_logs(self, atm_id=None):
+        maint_path = os.path.join(Config.RAW_DATA_DIR, 'maintenance_records.csv')
         df = _load_fixture(
-            Config.FIXTURE_MAINTENANCE_CSV,
-            parse_dates=['service_date'],
+            maint_path,
+            parse_dates=['maintenance_date'],
         )
+        if not df.empty:
+            df = df.rename(columns={'maintenance_date': 'service_date'})
+            
         if atm_id and not df.empty:
             df = df[df['atm_id'] == atm_id]
         return df

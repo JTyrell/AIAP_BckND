@@ -13,184 +13,86 @@ const HOURLY_WEIGHTS = [
 // Weekly pattern (Mon=0 … Sun=6). Saturday spike is real in Spar Nord data.
 const WEEKLY_MULT = [0.88, 0.92, 0.95, 0.97, 1.05, 1.22, 0.80];
 
-const ATM_DATA = [
-  {
-    // High-traffic, healthy
-    id:"ATM-001", name:"Main Library Entrance", short:"Library",
-    manufacturer:"NCR", model:"SelfServ 87",
-    lat:17.3985, lng:-76.5492,
-    street:"Ring Road", building:"Faculty of Engineering",
-    services:["Cash Withdrawal","Balance Inquiry","Fund Transfer","Mini Statement"],
-    card_types:["Visa","Mastercard","Maestro","LINX"],
-    currency:"JMD",
-    status:"in_service",
-    health:94, healthTrend:+2.1,
-    uptime:98.6, uptime_7d:[98.1,98.8,99.0,97.9,98.6,99.1,98.6],
-    errorCount7d:2, errorRate:0.9,   // % of txns inactive (Spar Nord baseline ~4%)
-    errorAcceleration:0.12,
-    lastMaintenance:"2026-02-14", daysSinceMaintenance:19,
-    maintenance_count_30d:1, corrective:false,
-    cashLevel:82, cashStress:0.18, daysToDepletion:6,
-    avgDailyWithdrawal:312000, // JMD
-    transactions24h:147, transactionVelocity:12.3, avgAmount:4200,
-    failureProbability:0.04,
-    alerts:[],
-    // 7-day txn history (Mon–Sun) — grounded in weekly mult
-    weeklyTxns:[112,119,128,138,152,184,98],
-    // Hourly for today
-    hourlyTxns:[2,1,0,0,1,4,10,17,25,28,26,23,21,20,18,19,17,13,10,7,5,3,2,1],
-    // Monthly inactive tx count (Jan–Mar estimate)
-    monthlyInactive:[5,4,2],
-    cardBreakdown:{Visa:48,Mastercard:29,Maestro:12,LINX:9,JCB:2},
-  },
-  {
-    // Critical — cash depletion + error spike
-    id:"ATM-002", name:"Student Union Ground Floor", short:"Student Union",
-    manufacturer:"Diebold", model:"Nixdorf DN Series",
-    lat:17.3991, lng:-76.5478,
-    street:"University Avenue", building:"Student Union Complex",
-    services:["Cash Withdrawal","Cash Deposit","Balance Inquiry","Fund Transfer"],
-    card_types:["Visa","Mastercard","Maestro","LINX","JCB"],
-    currency:"JMD",
-    status:"in_service",
-    health:58, healthTrend:-4.3,
-    uptime:91.2, uptime_7d:[95.1,93.8,92.0,90.4,91.2,89.9,91.2],
-    errorCount7d:11, errorRate:8.1,
-    errorAcceleration:0.71,
-    lastMaintenance:"2026-01-22", daysSinceMaintenance:42,
-    maintenance_count_30d:0, corrective:false,
-    cashLevel:23, cashStress:0.77, daysToDepletion:2,
-    avgDailyWithdrawal:598000,
-    transactions24h:312, transactionVelocity:26.0, avgAmount:3800,
-    failureProbability:0.38,
-    alerts:["CASH_CRITICAL","MAINTENANCE_DUE","ERROR_SPIKE"],
-    weeklyTxns:[278,295,304,322,340,398,198],
-    hourlyTxns:[4,2,1,1,2,6,16,30,44,48,42,39,37,36,30,32,28,22,16,12,9,7,5,3],
-    monthlyInactive:[18,21,26],
-    cardBreakdown:{Visa:41,Mastercard:26,Maestro:10,LINX:17,JCB:6},
-  },
-  {
-    // Fair — slightly degrading
-    id:"ATM-003", name:"Faculty of Medical Sciences", short:"Med Sciences",
-    manufacturer:"Hyosung", model:"MoniMax 7600",
-    lat:17.3978, lng:-76.5501,
-    street:"Mona Road", building:"Medical Sciences Block",
-    services:["Cash Withdrawal","Balance Inquiry"],
-    card_types:["Visa","Mastercard","LINX"],
-    currency:"JMD",
-    status:"in_service",
-    health:79, healthTrend:+0.5,
-    uptime:96.4, uptime_7d:[96.0,96.8,96.2,95.9,96.4,97.1,96.4],
-    errorCount7d:4, errorRate:3.2,
-    errorAcceleration:0.22,
-    lastMaintenance:"2026-02-20", daysSinceMaintenance:13,
-    maintenance_count_30d:1, corrective:false,
-    cashLevel:67, cashStress:0.33, daysToDepletion:9,
-    avgDailyWithdrawal:228000,
-    transactions24h:89, transactionVelocity:7.4, avgAmount:5100,
-    failureProbability:0.09,
-    alerts:[],
-    weeklyTxns:[71,76,79,83,88,107,52],
-    hourlyTxns:[1,0,0,0,0,2,6,10,15,16,14,13,12,11,10,10,9,7,5,4,3,2,1,1],
-    monthlyInactive:[3,3,3],
-    cardBreakdown:{Visa:55,Mastercard:31,Maestro:0,LINX:14,JCB:0},
-  },
-  {
-    // CRITICAL — offline, hardware fault
-    id:"ATM-004", name:"Administration Building", short:"Admin Block",
-    manufacturer:"NCR", model:"SelfServ 84",
-    lat:17.3995, lng:-76.5488,
-    street:"Chancellor Drive", building:"Administration Complex",
-    services:["Cash Withdrawal","Fund Transfer","Balance Inquiry"],
-    card_types:["Visa","Mastercard","Maestro","LINX"],
-    currency:"JMD",
-    status:"out_of_service",
-    health:19, healthTrend:-11.2,
-    uptime:42.1, uptime_7d:[78.0,61.2,54.4,47.1,42.1,38.8,42.1],
-    errorCount7d:28, errorRate:31.4,
-    errorAcceleration:2.14,
-    lastMaintenance:"2025-12-18", daysSinceMaintenance:77,
-    maintenance_count_30d:0, corrective:true,
-    cashLevel:91, cashStress:0.09, daysToDepletion:17,
-    avgDailyWithdrawal:0,
-    transactions24h:0, transactionVelocity:0, avgAmount:0,
-    failureProbability:0.89,
-    alerts:["OUT_OF_SERVICE","CRITICAL_ERROR","MAINTENANCE_OVERDUE"],
-    weeklyTxns:[134,102,68,29,8,0,0],
-    hourlyTxns:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    monthlyInactive:[12,28,89],
-    cardBreakdown:{Visa:52,Mastercard:28,Maestro:8,LINX:10,JCB:2},
-  },
-  {
-    // Warning — cash low
-    id:"ATM-005", name:"Sports Complex", short:"Sports Complex",
-    manufacturer:"Wincor", model:"ProCash 2050",
-    lat:17.3972, lng:-76.5469,
-    street:"Stadium Road", building:"UWI Sports & Cultural Centre",
-    services:["Cash Withdrawal","Balance Inquiry"],
-    card_types:["Visa","Mastercard","LINX"],
-    currency:"JMD",
-    status:"in_service",
-    health:71, healthTrend:+1.8,
-    uptime:94.8, uptime_7d:[93.2,94.0,95.1,94.8,94.8,96.2,94.8],
-    errorCount7d:6, errorRate:4.8,
-    errorAcceleration:0.34,
-    lastMaintenance:"2026-02-10", daysSinceMaintenance:23,
-    maintenance_count_30d:1, corrective:false,
-    cashLevel:28, cashStress:0.72, daysToDepletion:3,
-    avgDailyWithdrawal:398000,
-    transactions24h:198, transactionVelocity:16.5, avgAmount:3200,
-    failureProbability:0.21,
-    alerts:["CASH_LOW"],
-    weeklyTxns:[167,178,184,196,210,252,124],
-    hourlyTxns:[2,1,1,0,1,3,8,13,18,20,18,17,16,15,14,15,13,10,8,6,4,3,2,2],
-    monthlyInactive:[7,8,10],
-    cardBreakdown:{Visa:44,Mastercard:22,Maestro:0,LINX:32,JCB:2},
-  },
-  {
-    // Good — canteen, high foot traffic
-    id:"ATM-006", name:"Canteen & Dining Area", short:"Canteen",
-    manufacturer:"Diebold", model:"Nixdorf CS 300",
-    lat:17.3988, lng:-76.5462,
-    street:"Union Road", building:"Campus Dining Block",
-    services:["Cash Withdrawal","Cash Deposit","Balance Inquiry"],
-    card_types:["Visa","Mastercard","Maestro","LINX"],
-    currency:"JMD",
-    status:"in_service",
-    health:83, healthTrend:-1.2,
-    uptime:95.9, uptime_7d:[96.1,96.0,95.8,95.5,95.9,96.4,95.9],
-    errorCount7d:5, errorRate:3.6,
-    errorAcceleration:0.28,
-    lastMaintenance:"2026-02-05", daysSinceMaintenance:28,
-    maintenance_count_30d:1, corrective:false,
-    cashLevel:61, cashStress:0.39, daysToDepletion:8,
-    avgDailyWithdrawal:488000,
-    transactions24h:241, transactionVelocity:20.1, avgAmount:2900,
-    failureProbability:0.13,
-    alerts:[],
-    weeklyTxns:[198,210,216,228,244,294,148],
-    hourlyTxns:[1,1,0,0,1,4,11,20,30,32,28,27,26,24,22,23,20,15,11,8,6,5,3,2],
-    monthlyInactive:[8,7,8],
-    cardBreakdown:{Visa:38,Mastercard:24,Maestro:11,LINX:25,JCB:2},
-  },
-];
+let ATM_DATA = [];
+let MAINTENANCE_QUEUE = [];
+let ALERTS = [];
 
-const MAINTENANCE_QUEUE = [
-  {id:"ATM-004", priority:"CRITICAL", issue:"Hardware fault — multiple card reader + dispenser errors. 77 days since last service.", eta:"Today", tech:"R. Thompson", estimatedDuration:"4–6 hrs"},
-  {id:"ATM-002", priority:"HIGH",     issue:"Error rate 8.1% (baseline 4%). Cash depletion in ~2 days. Immediate cash fill required.", eta:"Tomorrow", tech:"M. Clarke", estimatedDuration:"1–2 hrs"},
-  {id:"ATM-005", priority:"HIGH",     issue:"Cash level 28% — projected depletion in 3 days.", eta:"Mar 07", tech:"Unassigned", estimatedDuration:"45 min"},
-  {id:"ATM-006", priority:"MEDIUM",   issue:"28 days since last preventive maintenance. Schedule before 35-day threshold.", eta:"Mar 10", tech:"Unassigned", estimatedDuration:"2 hrs"},
-];
+const DataLoader = ({ token, children }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [err, setErr] = useState(null);
 
-const ALERTS = [
-  {time:"09:14", atm:"ATM-004", severity:"CRITICAL", msg:"Machine offline — hardware fault. Card reader & cash dispenser errors logged."},
-  {time:"08:52", atm:"ATM-002", severity:"CRITICAL", msg:"Cash level at 23%. Depletion forecast: 2 days."},
-  {time:"08:31", atm:"ATM-002", severity:"HIGH",     msg:"Error rate 8.1% — 3.2× above 30-day baseline. Acceleration: 0.71×."},
-  {time:"07:48", atm:"ATM-005", severity:"HIGH",     msg:"Cash level 28%. Depletion forecast: 3 days."},
-  {time:"06:15", atm:"ATM-004", severity:"CRITICAL", msg:"Uptime dropped below 50% — third consecutive day."},
-  {time:"Yesterday", atm:"ATM-002", severity:"MEDIUM", msg:"Maintenance overdue — 42 days since last service."},
-  {time:"Yesterday", atm:"ATM-006", severity:"LOW",   msg:"Preventive maintenance due in 7 days."},
-];
+  useEffect(() => {
+    if (!token) return;
+    fetch('/api/v1/staff/fleet/health', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => {
+        if (res.status === 401 || res.status === 422) {
+          // Token expired or invalid — force re-login
+          localStorage.removeItem('aiap_token');
+          window.location.reload();
+          return;
+        }
+        if (!res.ok) throw new Error(`Server responded ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+         if (!data) return; // guard for reload case
+         ATM_DATA = data.map(atm => ({
+            id: atm.id, name: atm.bank_name, short: atm.bank_name,
+            location: atm.location,
+            manufacturer: atm.manufacturer, model: atm.model,
+            lat: 17.3985, lng: -76.5492, // mock geo
+            street: atm.location, building: atm.location,
+            services: ["Withdrawal", "Deposits", "Balance Check", "Bill Payments", "Transfer"],
+            card_types: ["MasterCard", "Visa", "Multilink (Active)"],
+            currency: "JMD",
+            status: atm.status,
+            health: Math.round(atm.health_score), healthTrend: 0,
+            uptime: atm.uptime, uptime_7d: [atm.uptime, atm.uptime, atm.uptime, atm.uptime, atm.uptime, atm.uptime, atm.uptime],
+            errorCount7d: atm.error_count, errorRate: Math.round((atm.error_count/7)*10)/10,
+            errorAcceleration: atm.error_acceleration,
+            lastMaintenance: "2026-03-01", daysSinceMaintenance: 30,
+            maintenance_count_30d: 1, corrective: false,
+            cashLevel: Math.ceil(atm.cash_level), cashStress: 1 - (atm.cash_level/100), daysToDepletion: Math.floor(atm.days_to_depletion),
+            avgDailyWithdrawal: 300000, transactions24h: atm.transactions_24h, transactionVelocity: Math.round(atm.transactions_24h/24), avgAmount: 3800,
+            failureProbability: atm.failure_probability,
+            alerts: atm.alerts || [],
+            weeklyTxns: [100, 110, 120, 130, 140, 150, 100],
+            hourlyTxns: [0,0,0,0,1,5,10,20,30,40,30,25,20,20,25,30,20,15,10,5,2,1,0,0],
+            monthlyInactive: [5,4,3],
+            cardBreakdown: { Visa: 60, Mastercard: 40, Maestro: 0, LINX: 0, JCB: 0 }
+         }));
+         
+         const tempAlerts = [];
+         ATM_DATA.forEach(atm => {
+             atm.alerts.forEach(al => {
+                 let sev = "MEDIUM";
+                 if (al.includes("CRITICAL") || al.includes("OUT_OF_SERVICE")) sev = "CRITICAL";
+                 else if (al.includes("LOW_CASH") || al.includes("HIGH_RISK")) sev = "HIGH";
+                 tempAlerts.push({ time: "Today", atm: atm.id, severity: sev, msg: al });
+             });
+         });
+         ALERTS = tempAlerts;
+
+         MAINTENANCE_QUEUE = ATM_DATA
+             .filter(a => a.health < 80 || a.cashLevel < 35)
+             .map(a => ({
+                 id: a.id, priority: a.health < 55 ? "CRITICAL" : "HIGH",
+                 issue: `Automated ML flag. Cash: ${a.cashLevel}%, Health: ${a.health}%.`,
+                 eta: a.daysToDepletion < 3 ? "Today" : "Tomorrow", tech: "Unassigned", estimatedDuration: "1-2 hrs"
+             }));
+
+         setLoaded(true);
+      })
+      .catch(e => setErr(e.message));
+  }, [token]);
+
+  if (err) return <div style={{color:"red", padding: 20}}>Failed to load data: {err} <br/> Is the Python backend running on 5001?</div>;
+  if (!loaded) return <div style={{color:"#22c55e", background:"#0b1535", height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'IBM Plex Mono',monospace"}}>Syncing Neural ATM Matrix...</div>;
+  
+  return children;
+};
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 const hc = (h) => h >= 80 ? "#22c55e" : h >= 55 ? "#f59e0b" : "#ef4444";
@@ -259,17 +161,35 @@ const Login = ({ onLogin }) => {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const CREDS = {
-    ops:      { u:"ops.admin",  p:"aiap2026", name:"Ops Admin" },
-    customer: { u:"customer",   p:"uwiatm",   name:"Campus User" },
-  };
+  const submit = async () => {
+    setLoading(true);
+    setErr("");
 
-  const submit = () => {
-    const c = CREDS[role];
-    if (user === c.u && pass === c.p) {
-      setLoading(true);
-      setTimeout(() => onLogin(role, c.name), 800);
-    } else setErr("Incorrect credentials.");
+    if (role === "customer") {
+      // Customer view is public — skip backend auth
+      setTimeout(() => onLogin("customer", "Campus User", null), 600);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user, password: pass }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErr(data.error || 'Authentication failed.');
+        setLoading(false);
+        return;
+      }
+      // Persist token in localStorage for session persistence
+      localStorage.setItem('aiap_token', data.access_token);
+      onLogin(data.role, data.username, data.access_token);
+    } catch (e) {
+      setErr('Cannot reach backend. Is the server running?');
+      setLoading(false);
+    }
   };
 
   return (
@@ -343,7 +263,7 @@ const Login = ({ onLogin }) => {
 };
 
 // ── OPS DASHBOARD ─────────────────────────────────────────────────────────────
-const OpsDashboard = ({ userName, onLogout }) => {
+const OpsDashboard = ({ userName, token, onLogout }) => {
   const [tab, setTab] = useState("overview");
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState("all");
@@ -416,7 +336,7 @@ const OpsDashboard = ({ userName, onLogout }) => {
 
       {/* Nav */}
       <div style={{ background:"#050505", borderBottom:"1px solid #0d0d0d", padding:"0 24px", display:"flex", gap:0 }}>
-        {[["overview","Overview"],["atms","Fleet"],["alerts","Alerts"],["maintenance","Maintenance"],["analytics","Analytics"]].map(([id,lbl]) => (
+        {[["overview","Overview"],["atms","Fleet"],["alerts","Alerts"],["maintenance","Maintenance"],["analytics","Analytics"],["data","Data Management"]].map(([id,lbl]) => (
           <button key={id} onClick={() => { setTab(id); if(id!=="atms") setSelected(null); }}
             style={{ padding:"13px 18px", background:"none", border:"none", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, transition:"all 0.15s",
               color: tab===id ? "#e5e5e5" : "#444",
@@ -434,8 +354,8 @@ const OpsDashboard = ({ userName, onLogout }) => {
           {/* KPIs */}
           <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:12, marginBottom:20 }}>
             {[
-              {lbl:"Fleet Health",  val:`${avgHealth}%`,   sub:"avg across 6 ATMs",    col:hc(avgHealth)},
-              {lbl:"Active",        val:`${6-offlineCount}/6`, sub:`${offlineCount} offline`,   col: offlineCount>0?"#ef4444":"#22c55e"},
+              {lbl:"Fleet Health",  val:`${avgHealth}%`,   sub:`avg across ${ATM_DATA.length} ATMs`,    col:hc(avgHealth)},
+              {lbl:"Active",        val:`${ATM_DATA.length-offlineCount}/${ATM_DATA.length}`, sub:`${offlineCount} offline`,   col: offlineCount>0?"#ef4444":"#22c55e"},
               {lbl:"Alerts",        val:ALERTS.filter(a=>a.time!=="Yesterday").length, sub:`${critCount} critical`, col:critCount>0?"#ef4444":"#f59e0b"},
               {lbl:"Txns / 24h",    val:totalTxns.toLocaleString(), sub:"all active ATMs", col:"#e5e5e5"},
               {lbl:"Cash Alerts",   val:ATM_DATA.filter(a=>a.cashLevel<30).length,  sub:"below 30% threshold", col:ATM_DATA.filter(a=>a.cashLevel<30).length>0?"#ef4444":"#22c55e"},
@@ -458,7 +378,8 @@ const OpsDashboard = ({ userName, onLogout }) => {
                       {atm.alerts.length>0 && <span style={{ fontSize:9, color:"#ef4444", fontFamily:"'IBM Plex Mono',monospace" }}>▲ {atm.alerts.length}</span>}
                     </div>
                     <div style={{ fontSize:13, fontWeight:600, color:"#d4d4d4" }}>{atm.short}</div>
-                    <div style={{ fontSize:11, color:"#444", marginTop:2 }}>{atm.manufacturer} {atm.model}</div>
+                    <div style={{ fontSize:11, color:"#60a5fa", marginTop:2 }}>{atm.location}</div>
+                    <div style={{ fontSize:10, color:"#444", marginTop:1 }}>{atm.model}</div>
                   </div>
                   <div style={{ textAlign:"right" }}>
                     <div style={{ fontSize:26, fontWeight:700, color:hc(atm.health), fontFamily:"'IBM Plex Mono',monospace", lineHeight:1 }}>{atm.health}</div>
@@ -514,11 +435,33 @@ const OpsDashboard = ({ userName, onLogout }) => {
             {/* List */}
             <div>
               <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
-                {[["all","All"],["healthy","● Healthy"],["warning","● Warning"],["critical","● Critical"],["out_of_service","Offline"]].map(([f,l]) => (
+              <style>{`@keyframes gradBorder { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }`}</style>
+                {[
+                  ["all",      "All",        null],
+                  ["healthy",  "● Healthy",  "#22c55e"],
+                  ["warning",  "● Warning",  "#f59e0b"],
+                  ["critical", "● Critical", "#f97316"],
+                  ["out_of_service", "● Offline", "#ef4444"],
+                ].map(([f, l, c]) => (
                   <button key={f} onClick={() => setFilter(f)}
-                    style={{ padding:"4px 10px", borderRadius:4, border:`1px solid ${filter===f?"#22c55e":"#1a1a1a"}`,
-                      background: filter===f?"#052e16":"transparent",
-                      color: filter===f?"#22c55e":"#444", fontSize:11, cursor:"pointer", fontFamily:"'IBM Plex Mono',monospace" }}>
+                    style={{
+                      padding: f==="all" && filter===f ? "3px 9px" : "4px 10px",
+                      borderRadius:4, fontSize:11, cursor:"pointer",
+                      fontFamily:"'IBM Plex Mono',monospace", transition:"all 0.2s",
+                      ...(f === "all" ? {
+                        border: filter===f ? "2px solid transparent" : "1px solid #1a1a1a",
+                        background: filter===f
+                          ? "linear-gradient(#0a0f0a, #0a0f0a) padding-box, linear-gradient(90deg, #22c55e, #f59e0b, #f97316, #ef4444, #22c55e) border-box"
+                          : "transparent",
+                        backgroundSize: filter===f ? "300% 100%" : "auto",
+                        animation: filter===f ? "gradBorder 4s ease infinite" : "none",
+                        color: filter===f ? "#e5e5e5" : "#444",
+                      } : {
+                        border: `1px solid ${filter===f ? c : "#1a1a1a"}`,
+                        background: filter===f ? `${c}18` : "transparent",
+                        color: filter===f ? c : "#444",
+                      }),
+                    }}>
                     {l}
                   </button>
                 ))}
@@ -536,6 +479,7 @@ const OpsDashboard = ({ userName, onLogout }) => {
                           <span style={{ fontSize:10, color:"#444", fontFamily:"'IBM Plex Mono',monospace" }}>{atm.id}</span>
                         </div>
                         <div style={{ fontSize:12, fontWeight:600, color:"#d4d4d4" }}>{atm.short}</div>
+                        <div style={{ fontSize:10, color:"#60a5fa" }}>{atm.location}</div>
                       </div>
                       <div style={{ fontSize:18, fontWeight:700, color:hc(atm.health), fontFamily:"'IBM Plex Mono',monospace" }}>{atm.health}</div>
                     </div>
@@ -558,7 +502,8 @@ const OpsDashboard = ({ userName, onLogout }) => {
                       <Pill label={sl(selected.status)} color={sc(selected.status)} bg={selected.status==="in_service"?"#052e16":"#1a0000"}/>
                     </div>
                     <div style={{ fontSize:20, fontWeight:700, color:"#e5e5e5" }}>{selected.name}</div>
-                    <div style={{ fontSize:12, color:"#444", marginTop:2 }}>{selected.manufacturer} {selected.model} · {selected.building}</div>
+                    <div style={{ fontSize:13, color:"#60a5fa", marginTop:2 }}>{selected.location}</div>
+                    <div style={{ fontSize:11, color:"#444", marginTop:2 }}>{selected.model}</div>
                   </div>
                   <button onClick={() => setSelected(null)} style={{ background:"none", border:"1px solid #1a1a1a", color:"#444", borderRadius:6, padding:"5px 12px", cursor:"pointer", fontSize:11, fontFamily:"'IBM Plex Mono',monospace" }}>✕</button>
                 </div>
@@ -730,7 +675,8 @@ const OpsDashboard = ({ userName, onLogout }) => {
           </div>
         </>)}
 
-        {/* ───── ANALYTICS ───── */}
+        {/* ───── DATA MANAGEMENT ───── */}
+        {tab==="data" && <DataManagementView token={token} />}
         {tab==="analytics" && (<>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
 
@@ -810,14 +756,215 @@ const OpsDashboard = ({ userName, onLogout }) => {
   );
 };
 
+// ── DATA MANAGEMENT VIEW ───────────────────────────────────────────────────
+const DataManagementView = ({ token }) => {
+  const [file, setFile] = useState(null);
+  const [status, setStatus] = useState("idle"); // idle, uploading, success, error
+  const [message, setMessage] = useState("");
+  const [retrainingResult, setRetrainingResult] = useState(null);
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+      setStatus("idle");
+    }
+  };
+
+  const onUpload = async () => {
+    if (!file) return;
+    setStatus("uploading");
+    setMessage("Uploading metrics and initiating intelligent imputation...");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      // Point to backend Flask server
+      const response = await fetch("/api/v1/data/upload/metrics", {
+        method: "POST",
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        setStatus("success");
+        setMessage("Success! Data ingested and models retrained.");
+        setRetrainingResult(data);
+      } else {
+        setStatus("error");
+        setMessage(data.error || "Upload failed. Please check the file schema.");
+      }
+    } catch (err) {
+      setStatus("error");
+      setMessage("Error connecting to AIAP backend. Is the server running?");
+    }
+  };
+
+  const DATASET_SCHEMAS = [
+    { type: "atm_metadata", color: "#60a5fa", cols: [
+      { name: "atm_id", desc: "Unique ATM identifier (NCB0001)" },
+      { name: "atm_bank", desc: "Bank name" },
+      { name: "location", desc: "Campus location" },
+      { name: "atm_model", desc: "Hardware model" },
+    ]},
+    { type: "cash_status", color: "#22c55e", cols: [
+      { name: "cash_id", desc: "Record identifier" },
+      { name: "atm_id", desc: "ATM reference" },
+      { name: "timestamp", desc: "Date (YYYY-MM-DD)" },
+      { name: "remaining_cash", desc: "Cash remaining (JMD)" },
+    ]},
+    { type: "transactions", color: "#f59e0b", cols: [
+      { name: "transaction_id", desc: "Transaction identifier" },
+      { name: "atm_id", desc: "ATM reference" },
+      { name: "transaction_time", desc: "Timestamp (YYYY-MM-DD HH:MM:SS)" },
+      { name: "withdrawal_amount", desc: "Amount withdrawn (JMD)" },
+      { name: "transaction_status", desc: "Success (1) or failure (0)" },
+    ]},
+    { type: "operational_logs", color: "#f97316", cols: [
+      { name: "log_id", desc: "Log entry identifier" },
+      { name: "atm_id", desc: "ATM reference" },
+      { name: "timestamp", desc: "Timestamp (YYYY-MM-DD HH:MM:SS)" },
+      { name: "uptime_status", desc: "Online (1) or offline (0)" },
+      { name: "error_code", desc: "Error code if applicable" },
+      { name: "downtime_duration", desc: "Minutes of downtime" },
+    ]},
+    { type: "maintenance_records", color: "#a78bfa", cols: [
+      { name: "maintenance_id", desc: "Record identifier" },
+      { name: "atm_id", desc: "ATM reference" },
+      { name: "maintenance_date", desc: "Timestamp (YYYY-MM-DD HH:MM:SS)" },
+      { name: "maintenance_type", desc: "Preventive or Corrective" },
+      { name: "amount_added", desc: "Cash replenished (JMD)" },
+    ]},
+  ];
+
+  return (
+    <div style={{ animation: "fadeIn 0.3s ease" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16 }}>
+        <div>
+          <SectionTitle>Upload Training Data</SectionTitle>
+          <div style={{ background: "#080808", border: "1px dashed #222", borderRadius: 12, padding: "40px", textAlign: "center", marginBottom: 16 }}>
+            <div style={{ fontSize: 40, color: "#22c55e", marginBottom: 16 }}>⬘</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#e5e5e5", marginBottom: 8 }}>Metrics Ingestion Engine</div>
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 24, maxWidth: 400, margin: "0 auto" }}>
+              Upload any of the 5 recognised CSV types. The engine auto-detects the schema and routes data accordingly.
+            </div>
+            
+            <input type="file" accept=".csv" onChange={handleFileChange} id="csv-upload" style={{ display: "none" }} />
+            <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+              <label htmlFor="csv-upload" style={{ 
+                background: "#111", border: "1px solid #222", borderRadius: 6, padding: "10px 20px", 
+                color: "#e5e5e5", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" 
+              }}>
+                {file ? "Change File" : "Select CSV"}
+              </label>
+              {file && (
+                <button onClick={onUpload} disabled={status === "uploading"} style={{ 
+                  background: "#052e16", border: "1px solid #14532d", borderRadius: 6, padding: "10px 24px", 
+                  color: "#22c55e", fontSize: 12, fontWeight: 700, cursor: "pointer"
+                }}>
+                  {status === "uploading" ? "Syncing..." : "Process & Train →"}
+                </button>
+              )}
+            </div>
+            {file && <div style={{ marginTop: 12, fontSize: 11, color: "#333", fontFamily: "'IBM Plex Mono',monospace" }}>Selected: {file.name}</div>}
+          </div>
+
+          {(status === "success" || status === "error" || status === "uploading") && (
+            <div style={{ 
+              background: status === "error" ? "#1a0000" : "#050505", 
+              border: `1px solid ${status === "error" ? "#450a0a" : status === "success" ? "#14532d" : "#222"}`,
+              borderRadius: 8, padding: "20px", marginBottom: 16
+            }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <div style={{ fontSize: 18, color: status === "error" ? "#ef4444" : "#22c55e", animation: status === "uploading" ? "blink 1s infinite" : "none" }}>
+                  {status === "success" ? "✓" : status === "error" ? "✕" : "⚑"}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#e5e5e5" }}>{status === "uploading" ? "Processing Engine Active" : status === "success" ? "Ingestion Complete" : "Ingestion Failed"}</div>
+                  <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{message}</div>
+                </div>
+              </div>
+              {retrainingResult && (
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #111", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <StatBox label="Rows Processed" value={retrainingResult.rows_processed} sub="Successfully imputed" color="#22c55e" />
+                  <StatBox label="Pipeline Status" value={retrainingResult.status.toUpperCase()} sub="Training complete" color="#60a5fa" />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <SectionTitle>Accepted CSV Schemas</SectionTitle>
+          <div style={{ background: "#050505", border: "1px solid #111", borderRadius: 8, padding: "16px", maxHeight: 520, overflowY: "auto" }}>
+            <div style={{ fontSize: 11, color: "#444", marginBottom: 14, lineHeight: 1.5 }}>
+              Upload any of the following dataset types. The engine auto-detects the format from column names.
+            </div>
+            {DATASET_SCHEMAS.map(ds => (
+              <div key={ds.type} style={{ marginBottom: 14, borderBottom: "1px solid #0d0d0d", paddingBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: ds.color, fontFamily: "'IBM Plex Mono',monospace", marginBottom: 6, letterSpacing: 0.5 }}>
+                  {ds.type}.csv
+                </div>
+                {ds.cols.map(c => (
+                  <div key={c.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3, paddingLeft: 8 }}>
+                    <span style={{ fontSize: 10, color: "#888", fontFamily: "'IBM Plex Mono',monospace" }}>{c.name}</span>
+                    <span style={{ fontSize: 9, color: "#444", textAlign: "right" }}>{c.desc}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+            <div style={{ marginTop: 8, padding: "10px", background: "#080808", borderRadius: 4, fontSize: 10, color: "#333" }}>
+              Auto-detection matches column signatures. New data is appended to existing datasets.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 // ── CUSTOMER INTERFACE ────────────────────────────────────────────────────────
 const CustomerView = ({ onLogout }) => {
+  const [atms, setAtms] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [filterService, setFilterService] = useState("All");
   const [search, setSearch] = useState("");
   const [showUnavailable, setShowUnavailable] = useState(true);
 
-  const ALL_SERVICES = ["All","Cash Withdrawal","Cash Deposit","Fund Transfer","Balance Inquiry"];
+  useEffect(() => {
+    fetch('/api/v1/public/atms')
+      .then(r => r.json())
+      .then(data => {
+        const mapped = data.map(a => ({
+          id: a.id,
+          name: a.short || a.name,
+          location: a.name || a.building,
+          building: a.building || a.name,
+          short: a.short || a.name,
+          status: a.status || "in_service",
+          health: Math.round(a.health || 75),
+          cashLevel: a.cash_level || 70,
+          transactions24h: a.transactions_24h || 0,
+          services: typeof a.services === 'string' && a.services.length > 0
+            ? a.services.split(',').map(s => s.trim())
+            : ["Withdrawal", "Deposits", "Balance Check", "Bill Payments", "Transfer"],
+          card_types: typeof a.card_types === 'string' && a.card_types.length > 0
+            ? a.card_types.split(',').map(s => s.trim())
+            : ["Visa", "Mastercard"],
+          uptime: a.uptime || 95,
+          daysToDepletion: a.days_to_depletion || 7,
+          hourlyTxns: a.hourlyTxns || [0,0,0,0,1,5,10,20,30,40,30,25,20,20,25,30,20,15,10,5,2,1,0,0],
+        }));
+        setAtms(mapped);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const ALL_SERVICES = ["All","Withdrawal","Deposits","Balance Check","Bill Payments","Transfer"];
 
   const activityLevel = (txns) => txns > 220 ? "High" : txns > 100 ? "Moderate" : txns > 0 ? "Low" : "—";
   const activityColor = (txns) => txns > 220 ? "#ef4444" : txns > 100 ? "#f59e0b" : txns > 0 ? "#22c55e" : "#444";
@@ -825,7 +972,9 @@ const CustomerView = ({ onLogout }) => {
 
   const waitTime = (txns) => txns > 220 ? "5–10 min wait" : txns > 100 ? "2–5 min wait" : txns > 0 ? "No wait" : "Unavailable";
 
-  const filtered = ATM_DATA
+  if (loading) return <div style={{color:"#22c55e", background:"#f9fafb", height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", fontSize:16}}>Loading ATM data...</div>;
+
+  const filtered = atms
     .filter(a => showUnavailable || a.status==="in_service")
     .filter(a => filterService==="All" || a.services.includes(filterService))
     .filter(a => search==="" || a.name.toLowerCase().includes(search.toLowerCase()) || a.building.toLowerCase().includes(search.toLowerCase()));
@@ -885,8 +1034,8 @@ const CustomerView = ({ onLogout }) => {
         </div>
 
         {/* ATM Cards Grid */}
-        <div style={{ display:"grid", gridTemplateColumns: selected?"1fr 340px":"repeat(auto-fill,minmax(280px,1fr))", gap:14, alignItems:"start" }}>
-          <div style={{ display:"grid", gridTemplateColumns: selected?"1fr":"repeat(auto-fill,minmax(280px,1fr))", gap:14 }}>
+        <div style={{ display:"grid", gridTemplateColumns: selected?"1fr 360px":"1fr", gap:16, alignItems:"start" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:14 }}>
             {filtered.map(atm => {
               const isSelected = selected?.id===atm.id;
               const isOffline = atm.status!=="in_service";
@@ -1062,8 +1211,34 @@ const CustomerView = ({ onLogout }) => {
 
 // ── APP ───────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [auth, setAuth] = useState(null);
-  if (!auth) return <Login onLogin={(role,name)=>setAuth({role,name})}/>;
-  if (auth.role==="ops") return <OpsDashboard userName={auth.name} onLogout={()=>setAuth(null)}/>;
-  return <CustomerView onLogout={()=>setAuth(null)}/>;
+  const [auth, setAuth] = useState(() => {
+    // Restore session from localStorage
+    const saved = localStorage.getItem('aiap_token');
+    return saved ? { role: 'ops', name: 'Ops Admin', token: saved } : null;
+  });
+
+  const handleLogin = (role, name, token) => {
+    setAuth({ role, name, token });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('aiap_token');
+    ATM_DATA = [];
+    MAINTENANCE_QUEUE = [];
+    ALERTS = [];
+    setAuth(null);
+  };
+
+  // No auth → show login
+  if (!auth) return <Login onLogin={handleLogin} />;
+
+  // Customer view → public, no token needed, no DataLoader
+  if (auth.role === "customer") return <CustomerView onLogout={handleLogout} />;
+
+  // Ops view → requires token + DataLoader
+  return (
+    <DataLoader token={auth.token}>
+      <OpsDashboard userName={auth.name} token={auth.token} onLogout={handleLogout} />
+    </DataLoader>
+  );
 }
