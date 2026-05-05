@@ -6,7 +6,8 @@ import os
 import pandas as pd
 from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
-from utils.repository import get_repository
+from config import Config
+from utils.repository import get_repository, clear_cache
 from ml_engine.pipeline import train_all_models
 
 bp = Blueprint('data_ingest', __name__, url_prefix='/api/v1/data')
@@ -49,8 +50,8 @@ def upload_metrics_csv():
         return jsonify({"error": "Invalid file type. CSV only."}), 400
 
     filename = secure_filename(file.filename)
-    filepath = os.path.join('data', 'raw', filename)
-    os.makedirs('data/raw', exist_ok=True)
+    filepath = os.path.join(Config.RAW_DATA_DIR, filename)
+    os.makedirs(Config.RAW_DATA_DIR, exist_ok=True)
     file.save(filepath)
 
     try:
@@ -77,7 +78,7 @@ def upload_metrics_csv():
 
         # Save to the canonical filename for the detected type
         if dataset_type != "legacy_metrics":
-            canonical_path = os.path.join('data', 'raw', f'{dataset_type}.csv')
+            canonical_path = os.path.join(Config.RAW_DATA_DIR, f'{dataset_type}.csv')
             if filepath != canonical_path:
                 # Append to existing file if it exists, otherwise create new
                 if os.path.exists(canonical_path):
@@ -96,6 +97,7 @@ def upload_metrics_csv():
 
         # Trigger model retraining
         try:
+            clear_cache()
             result = train_all_models()
             status = "success"
             msg = f"Ingested {dataset_type} data ({rows} new rows) and retrained models."

@@ -12,7 +12,7 @@ from sklearn.pipeline import Pipeline
 from xgboost import XGBRegressor, XGBClassifier
 
 
-# ── Feature groups per PDF Section 6.1–6.3 ──────────────────────────────────
+# ── Feature groups ──────────────────────────────────
 
 HEALTH_FEATURES = [
     'uptime_percentage', 'error_count_7d', 'maintenance_count_30d',
@@ -22,6 +22,7 @@ HEALTH_FEATURES = [
 CASH_FEATURES = [
     'cash_stress_indicator', 'cash_consumption_rate',
     'days_since_replenishment', 'transaction_count', 'is_month_end',
+    'deposit_bin_utilization', 'is_salary_day', 'is_holiday'
 ]
 
 FAILURE_FEATURES = [

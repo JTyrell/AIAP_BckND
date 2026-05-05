@@ -4,7 +4,7 @@ Serves ATM finder & detail for the CustomerView component.
 """
 from flask import Blueprint, request, jsonify
 from utils.repository import get_repository
-from ml_engine.pipeline import predict_for_atm, generate_alerts
+from ml_engine.pipeline import predict_for_atm, predict_fleet, generate_alerts
 import pandas as pd
 from math import radians, cos, sin, sqrt, atan2
 
@@ -46,26 +46,28 @@ def get_atms():
         )
         snapshot = snapshot[snapshot['distance_km'] <= radius_km]
 
+    # Batch predict for fleet transparency
+    all_preds = predict_fleet()
     results = []
     for _, row in snapshot.iterrows():
         atm_id = row['atm_id']
-        try:
-            pred = predict_for_atm(atm_id, repository=repo)
-        except Exception:
-            pred = {
-                "health_score": 75.0,
-                "failure_probability": 0.05,
-                "activity_level": "Moderate",
-                "days_to_depletion": 7.0,
-                "cash_stress_indicator": 0.3,
-                "error_acceleration": 0.1,
-                "uptime_percentage": float(
-                    row.get('uptime_percentage', 95.0)
-                ),
-            }
+        pred = all_preds.get(atm_id, {
+            "health_score": 75.0,
+            "failure_probability": 0.05,
+            "activity_level": "Moderate",
+            "days_to_depletion": 7.0,
+            "cash_stress_indicator": 0.3,
+            "error_acceleration": 0.1,
+            "uptime_percentage": float(
+                row.get('uptime_percentage', 95.0)
+            ),
+            "transactions_24h": 0,
+        })
 
         # cash_level = % remaining (higher = better, matching frontend)
         cash_level = round((1 - pred.get('cash_stress_indicator', 0.3)) * 100, 0)
+        if cash_level < 0:
+            cash_level = 0.0
 
         results.append({
             "id": str(row.get('atm_id', '')).strip(),
@@ -76,10 +78,12 @@ def get_atms():
             "health": pred["health_score"],
             "activity_level": pred["activity_level"],
             "cash_level": cash_level,
+            "deposit_bin_utilization": pred.get("deposit_bin_utilization", 0.0),
             "days_to_depletion": pred["days_to_depletion"],
-            "transactions_24h": int(row.get('transaction_count', 0)),
+            "transactions_24h": pred.get('transactions_24h_predicted', int(row.get('transaction_count', 0))),
             "services": row.get('services', ''),
             "card_types": row.get('card_types', ''),
+            "historical_series": pred.get('historical_series', {}),
             "lat": float(row['lat']) if 'lat' in row else None,
             "lng": float(row['lng']) if 'lng' in row else None,
             "distance_km": (
@@ -96,7 +100,7 @@ def get_atm_detail(atm_id):
     repo = get_repository()
 
     try:
-        pred = predict_for_atm(atm_id, repository=repo)
+        pred = predict_for_atm(atm_id)
     except Exception as e:
         return jsonify({"error": str(e)}), 404
 
@@ -121,6 +125,7 @@ def get_atm_detail(atm_id):
         "cash_level": round(
             (1 - pred.get('cash_stress_indicator', 0.3)) * 100, 0
         ),
+        "deposit_bin_utilization": pred.get("deposit_bin_utilization", 0.0),
         "days_to_depletion": pred["days_to_depletion"],
         "uptime_percentage": pred["uptime_percentage"],
         "error_acceleration": pred["error_acceleration"],

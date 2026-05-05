@@ -5,7 +5,7 @@ Serves fleet-wide KPIs and per-ATM health data.
 from flask import Blueprint, jsonify
 from utils.auth import ops_required
 from utils.repository import get_repository
-from ml_engine.pipeline import predict_for_atm, generate_alerts
+from ml_engine.pipeline import predict_for_atm, predict_fleet, generate_alerts
 import pandas as pd
 import logging
 
@@ -36,22 +36,18 @@ def get_kpis():
         snapshot[snapshot.get('operational_status', pd.Series()) == 'in_service']
     ) if 'operational_status' in snapshot.columns else total
 
-    # Get predictions for each ATM
+    # Get predictions for each ATM via batch
+    all_preds = predict_fleet()
     healths = []
     low_cash = 0
     high_risk = 0
 
-    for _, row in snapshot.iterrows():
-        try:
-            pred = predict_for_atm(row['atm_id'], repository=repo)
-            healths.append(pred['health_score'])
-            if pred.get('cash_stress_indicator', 0) > 0.70:
-                low_cash += 1
-            if pred.get('failure_probability', 0) > 0.50:
-                high_risk += 1
-        except Exception as e:
-            logger.debug("KPI prediction failed for %s: %s", row['atm_id'], e)
-            healths.append(75.0)
+    for atm_id, pred in all_preds.items():
+        healths.append(pred['health_score'])
+        if pred.get('cash_stress_indicator', 0) > 0.70:
+            low_cash += 1
+        if pred.get('failure_probability', 0) > 0.50:
+            high_risk += 1
 
     avg_health = round(sum(healths) / len(healths), 1) if healths else 0
 
@@ -75,20 +71,19 @@ def get_fleet_health():
     if snapshot.empty:
         return jsonify([])
 
+    # Batch predict
+    all_preds = predict_fleet()
     results = []
     for _, row in snapshot.iterrows():
         atm_id = row['atm_id']
-        try:
-            pred = predict_for_atm(atm_id, repository=repo)
-        except Exception:
-            pred = {
-                'health_score': 75.0,
-                'failure_probability': 0.05,
-                'days_to_depletion': 7.0,
-                'activity_level': 'Moderate',
-                'error_acceleration': 0.1,
-                'cash_stress_indicator': 0.3,
-            }
+        pred = all_preds.get(atm_id, {
+            'health_score': 75.0,
+            'failure_probability': 0.05,
+            'days_to_depletion': 7.0,
+            'activity_level': 'Moderate',
+            'error_acceleration': 0.1,
+            'cash_stress_indicator': 0.3,
+        })
 
         cash_level = round(
             (1 - pred.get('cash_stress_indicator', 0.3)) * 100, 1,
@@ -107,10 +102,14 @@ def get_fleet_health():
             "activity_level": pred['activity_level'],
             "uptime": float(row.get('uptime_percentage', 95.0)),
             "error_count": int(row.get('error_count', 0)),
-            "transactions_24h": int(row.get('transaction_count', 0)),
+            "transactions_24h": pred.get('transactions_24h_predicted', int(row.get('transaction_count', 0))),
+            "avg_amount": pred.get('avg_amount', 3800),
+            "avg_daily_withdrawal": pred.get('avg_daily_withdrawal', 300000),
             "cash_level": cash_level,
+            "deposit_bin_utilization": pred.get("deposit_bin_utilization", 0.0),
             "error_acceleration": pred.get('error_acceleration', 0.1),
             "alerts": generate_alerts(pred),
+            "historical_series": pred.get('historical_series', {}),
         })
 
     # Sort by health score ascending (worst first)

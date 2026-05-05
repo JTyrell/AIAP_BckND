@@ -1,14 +1,12 @@
 # Environments
 .env
-.env.bak
-.env.example
-*.env
+.env.*
+!.env.example
 
 # Dependencies
 node_modules/
 dist/
-jspm_packages/
-bower_components/
+build/
 
 # Python
 __pycache__/
@@ -17,36 +15,38 @@ __pycache__/
 *.so
 .Python
 env/
-build/
-develop-eggs/
-downloads/
-eggs/
-.eggs/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environments
 venv/
 .venv/
 ENV/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+.mypy_cache/
+.ruff_cache/
 
-# Large Data & Augmented Results
-augmented_data/
+# Large Data & Local Folders
+data/raw/
 data/raw_backup/
+augmented_data/
+scratch/
 *.xlsx
 *.csv
+*.sqlite3
+*.db
+
+# ML Models & Processed Data
+ml_engine/saved_models/*.joblib
+data/processed/
 
 # System / IDE
 .vscode/
 .idea/
+.qodo/
 .DS_Store
 Thumbs.db
 *.bak
 *.tmp
 *.log
+

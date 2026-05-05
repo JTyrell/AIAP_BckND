@@ -40,7 +40,7 @@ If you need to generate additional synthetic records or simulate months of telem
 ### Validating the ML Pipeline
 If you have pushed new CSV data to `data/raw/` and need to quickly verify that the models ingest and predict cleanly without launching the frontend:
 ```bash
-python scratch/validate_pipeline.py
+python scripts/smoke_test.py
 ```
 This triggers `train_all_models()` and evaluates `predict_for_atm()`. You will see a terminal output displaying the $R^2$ accuracy scores and sample prediction schemas.
 

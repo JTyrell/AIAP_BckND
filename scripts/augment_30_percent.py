@@ -2,13 +2,17 @@ import pandas as pd
 import numpy as np
 import os
 import shutil
+import sys
 from datetime import timedelta
 
+# Add project root to path for portable config import
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from config import Config
+
 # Configuration
-ORIG_DIR = r"c:\Users\JT\Downloads\Capstone\BckND\AIAP_BckND\training data to be extended"
-RAW_DIR = r"c:\Users\JT\Downloads\Capstone\BckND\AIAP_BckND\data\raw"
-BACKUP_DIR = r"c:\Users\JT\Downloads\Capstone\BckND\AIAP_BckND\data\raw_backup"
-RANDOM_SEED = 42
+RAW_DIR = Config.RAW_DATA_DIR
+BACKUP_DIR = Config.RAW_BACKUP_DIR
+RANDOM_SEED = 77
 
 np.random.seed(RANDOM_SEED)
 
@@ -21,13 +25,46 @@ def backup_raw_data():
     print(f"Backed up raw data to {BACKUP_DIR}")
 
 def load_data():
-    files = {
-        'atm': pd.read_csv(os.path.join(ORIG_DIR, 'atm_metadata.csv')),
-        'cash': pd.read_csv(os.path.join(ORIG_DIR, 'cash_status.csv')),
-        'maint': pd.read_csv(os.path.join(ORIG_DIR, 'maintenance_records.csv')),
-        'logs': pd.read_csv(os.path.join(ORIG_DIR, 'operational_logs.csv')),
-        'trans': pd.read_csv(os.path.join(ORIG_DIR, 'transactions.csv'))
+    files_to_load = ['atm_metadata', 'cash_status', 'maintenance_records', 'operational_logs', 'transactions']
+    ids = {
+        'atm_metadata': 'atm_id',
+        'cash_status': 'cash_id',
+        'maintenance_records': 'maintenance_id',
+        'operational_logs': 'log_id',
+        'transactions': 'transaction_id'
     }
+    
+    loaded_files = {}
+    for f_name in files_to_load:
+        dfs = []
+        # Try RAW
+        p_raw = os.path.join(RAW_DIR, f_name + '.csv')
+        if os.path.exists(p_raw):
+            dfs.append(pd.read_csv(p_raw))
+        
+        # Try BACKUP
+        p_bak = os.path.join(BACKUP_DIR, f_name + '.csv')
+        if os.path.exists(p_bak):
+            dfs.append(pd.read_csv(p_bak))
+            
+        if not dfs:
+            raise FileNotFoundError(f"Missing {f_name}.csv in both raw and backup folders.")
+            
+        # Merge and deduplicate
+        combined = pd.concat(dfs, ignore_index=True)
+        if f_name in ids:
+            combined = combined.drop_duplicates(subset=[ids[f_name]], keep='first')
+        
+        loaded_files[f_name] = combined
+
+    files = {
+        'atm': loaded_files['atm_metadata'],
+        'cash': loaded_files['cash_status'],
+        'maint': loaded_files['maintenance_records'],
+        'logs': loaded_files['operational_logs'],
+        'trans': loaded_files['transactions']
+    }
+    
     # Parse dates
     files['cash']['timestamp'] = pd.to_datetime(files['cash']['timestamp'])
     files['maint']['maintenance_date'] = pd.to_datetime(files['maint']['maintenance_date'])

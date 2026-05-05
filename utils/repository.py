@@ -19,6 +19,12 @@ logger = logging.getLogger(__name__)
 # ── In-memory fixture cache ─────────────────────────────────────────────────
 _cache = {}
 
+def clear_cache():
+    """Clear all in-memory caches to force a reload from disk."""
+    global _cache
+    _cache = {}
+    from ml_engine.data_provider import clear_provider_cache
+    clear_provider_cache()
 
 def _load_fixture(path, parse_dates=None):
     """Load a CSV fixture into memory, caching for performance."""

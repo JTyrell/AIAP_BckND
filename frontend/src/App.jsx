@@ -20,8 +20,10 @@ let ALERTS = [];
 const DataLoader = ({ token, children }) => {
   const [loaded, setLoaded] = useState(false);
   const [err, setErr] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    window.triggerFleetRefresh = () => setRefreshKey(k => k + 1);
     if (!token) return;
     fetch('/api/v1/staff/fleet/health', {
       headers: { 'Authorization': `Bearer ${token}` }
@@ -48,19 +50,21 @@ const DataLoader = ({ token, children }) => {
             card_types: ["MasterCard", "Visa", "Multilink (Active)"],
             currency: "JMD",
             status: atm.status,
-            health: Math.round(atm.health_score), healthTrend: 0,
-            uptime: atm.uptime, uptime_7d: [atm.uptime, atm.uptime, atm.uptime, atm.uptime, atm.uptime, atm.uptime, atm.uptime],
-            errorCount7d: atm.error_count, errorRate: Math.round((atm.error_count/7)*10)/10,
-            errorAcceleration: atm.error_acceleration,
+            health: Math.round(atm.health_score * 100) / 100, healthTrend: 0,
+            uptime: Math.round(atm.uptime * 100) / 100, uptime_7d: [atm.uptime, atm.uptime, atm.uptime, atm.uptime, atm.uptime, atm.uptime, atm.uptime],
+            errorCount7d: atm.error_count, errorRate: Math.round((atm.error_count/7) * 100) / 100,
+            errorAcceleration: Math.round(atm.error_acceleration * 100) / 100,
             lastMaintenance: "2026-03-01", daysSinceMaintenance: 30,
             maintenance_count_30d: 1, corrective: false,
-            cashLevel: Math.ceil(atm.cash_level), cashStress: 1 - (atm.cash_level/100), daysToDepletion: Math.floor(atm.days_to_depletion),
-            avgDailyWithdrawal: 300000, transactions24h: atm.transactions_24h, transactionVelocity: Math.round(atm.transactions_24h/24), avgAmount: 3800,
-            failureProbability: atm.failure_probability,
+            cashLevel: Math.round(atm.cash_level * 100) / 100, cashStress: Math.round((1 - (atm.cash_level/100)) * 100) / 100, daysToDepletion: Math.round(atm.days_to_depletion),
+            avgDailyWithdrawal: Math.round(atm.avg_daily_withdrawal || 0), transactions24h: atm.transactions_24h, transactionVelocity: Math.round(atm.transactions_24h/24), avgAmount: Math.round(atm.avg_amount || 0),
+            failureProbability: Math.round(atm.failure_probability * 100) / 100,
             alerts: atm.alerts || [],
-            weeklyTxns: [100, 110, 120, 130, 140, 150, 100],
-            hourlyTxns: [0,0,0,0,1,5,10,20,30,40,30,25,20,20,25,30,20,15,10,5,2,1,0,0],
-            monthlyInactive: [5,4,3],
+            weeklyTxns: atm.historical_series?.weekly_txns || [0,0,0,0,0,0,0],
+            weeklyLabels: atm.historical_series?.weekly_labels || ["M","T","W","T","F","S","S"],
+            hourlyTxns: atm.historical_series?.hourly_txns || [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            monthlyInactive: atm.historical_series?.monthly_inactive || [0,0,0],
+            monthlyLabels: atm.historical_series?.monthly_labels || ["J","F","M"],
             cardBreakdown: { Visa: 60, Mastercard: 40, Maestro: 0, LINX: 0, JCB: 0 }
          }));
          
@@ -86,7 +90,7 @@ const DataLoader = ({ token, children }) => {
          setLoaded(true);
       })
       .catch(e => setErr(e.message));
-  }, [token]);
+  }, [token, refreshKey]);
 
   if (err) return <div style={{color:"red", padding: 20}}>Failed to load data: {err} <br/> Is the Python backend running on 5001?</div>;
   if (!loaded) return <div style={{color:"#22c55e", background:"#0b1535", height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'IBM Plex Mono',monospace"}}>Syncing Neural ATM Matrix...</div>;
@@ -200,7 +204,7 @@ const Login = ({ onLogin }) => {
       {/* Grid background */}
       <div style={{ position:"fixed", inset:0, backgroundImage:"linear-gradient(#111 1px,transparent 1px),linear-gradient(90deg,#111 1px,transparent 1px)", backgroundSize:"40px 40px", opacity:0.4 }}/>
 
-      <div style={{ position:"relative", width:400, padding:"40px 36px", background:"#080808", border:"1px solid #1a1a1a", borderRadius:12, boxShadow:"0 0 60px rgba(0,0,0,0.8)" }}>
+      <div className="login-box">
         {/* Logo */}
         <div style={{ marginBottom:32 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
@@ -279,7 +283,7 @@ const OpsDashboard = ({ userName, token, onLogout }) => {
 
   const critCount = ATM_DATA.filter(a => a.health < 55).length;
   const alertCount = ATM_DATA.filter(a => a.alerts.length > 0).length;
-  const avgHealth = Math.round(ATM_DATA.reduce((s,a)=>s+a.health,0)/ATM_DATA.length);
+  const avgHealth = Math.round((ATM_DATA.reduce((s,a)=>s+a.health,0)/ATM_DATA.length) * 100) / 100;
   const totalTxns = ATM_DATA.reduce((s,a)=>s+a.transactions24h,0);
   const offlineCount = ATM_DATA.filter(a=>a.status!=="in_service").length;
 
@@ -309,42 +313,45 @@ const OpsDashboard = ({ userName, token, onLogout }) => {
         @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
 
-      {/* Topbar */}
-      <div style={{ background:"#050505", borderBottom:"1px solid #111", height:52, display:"flex", alignItems:"center", padding:"0 24px", gap:20, position:"sticky", top:0, zIndex:100 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <span style={{ fontSize:16, color:"#22c55e" }}>◈</span>
-          <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:14, fontWeight:600, color:"#e5e5e5", letterSpacing:2 }}>AIAP</span>
-          <span style={{ fontSize:10, color:"#333", fontFamily:"'IBM Plex Mono',monospace", letterSpacing:1 }}>OPS</span>
-        </div>
-        <div style={{ flex:1 }}/>
-        {/* Live indicator */}
-        <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"#333", fontFamily:"'IBM Plex Mono',monospace" }}>
-          <span style={{ width:6, height:6, borderRadius:"50%", background:"#22c55e", display:"inline-block", animation:"blink 2s infinite" }}/>
-          LIVE · {timeStr}
-        </div>
-        {critCount > 0 && (
-          <div style={{ background:"#091038", border:"1px solid #ef4444", borderRadius:4, padding:"3px 10px", fontSize:11, color:"#ef4444", fontFamily:"'IBM Plex Mono',monospace", fontWeight:600, display:"flex", alignItems:"center", gap:6 }}>
-            <span style={{ animation:"blink 1s infinite", display:"inline-block" }}>⚑</span> {critCount} CRITICAL
+      {/* Unified Sticky Header Container */}
+      <div style={{ position: "sticky", top: 0, zIndex: 110, background: "rgba(5, 5, 5, 0.8)", backdropFilter: "blur(12px)", borderBottom: "1px solid #111" }}>
+        {/* Topbar */}
+        <div style={{ height: 52, display: "flex", alignItems: "center", padding: "0 24px", gap: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 16, color: "#22c55e" }}>◈</span>
+            <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 14, fontWeight: 600, color: "#e5e5e5", letterSpacing: 2 }}>AIAP</span>
+            <span style={{ fontSize: 10, color: "#333", fontFamily: "'IBM Plex Mono',monospace", letterSpacing: 1 }}>OPS</span>
           </div>
-        )}
-        <div style={{ fontSize:12, color:"#333" }}>
-          <span style={{ color:"#555" }}>{userName}</span>
-          <span style={{ margin:"0 8px", color:"#222" }}>·</span>
-          <span style={{ cursor:"pointer", color:"#444" }} onClick={onLogout}>sign out</span>
+          <div style={{ flex: 1 }}/>
+          {/* Live indicator */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#333", fontFamily: "'IBM Plex Mono',monospace" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", display: "inline-block", animation: "blink 2s infinite" }}/>
+            LIVE · {timeStr}
+          </div>
+          {critCount > 0 && (
+            <div style={{ background: "#091038", border: "1px solid #ef4444", borderRadius: 4, padding: "3px 10px", fontSize: 11, color: "#ef4444", fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ animation: "blink 1s infinite", display: "inline-block" }}>⚑</span> {critCount} CRITICAL
+            </div>
+          )}
+          <div style={{ fontSize: 12, color: "#333" }}>
+            <span style={{ color: "#555" }}>{userName}</span>
+            <span style={{ margin: "0 8px", color: "#222" }}>·</span>
+            <span style={{ cursor: "pointer", color: "#444" }} onClick={onLogout}>sign out</span>
+          </div>
         </div>
-      </div>
 
-      {/* Nav */}
-      <div style={{ background:"#050505", borderBottom:"1px solid #0d0d0d", padding:"0 24px", display:"flex", gap:0 }}>
-        {[["overview","Overview"],["atms","Fleet"],["alerts","Alerts"],["maintenance","Maintenance"],["analytics","Analytics"],["data","Data Management"]].map(([id,lbl]) => (
-          <button key={id} onClick={() => { setTab(id); if(id!=="atms") setSelected(null); }}
-            style={{ padding:"13px 18px", background:"none", border:"none", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, transition:"all 0.15s",
-              color: tab===id ? "#e5e5e5" : "#444",
-              borderBottom: tab===id ? "2px solid #22c55e" : "2px solid transparent" }}>
-            {lbl}
-            {id==="alerts" && alertCount>0 && <span style={{ marginLeft:6, background:"#ef4444", borderRadius:3, padding:"1px 5px", fontSize:9, color:"#fff", fontFamily:"'IBM Plex Mono',monospace" }}>{alertCount}</span>}
-          </button>
-        ))}
+        {/* Nav Tabs */}
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", padding: "0 24px", display: "flex", gap: 0 }}>
+          {[["overview", "Overview"], ["atms", "Fleet"], ["alerts", "Alerts"], ["maintenance", "Maintenance"], ["analytics", "Analytics"], ["data", "Data Management"]].map(([id, lbl]) => (
+            <button key={id} onClick={() => { setTab(id); if (id !== "atms") setSelected(null); }}
+              style={{ padding: "13px 18px", background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", fontSize: 12, fontWeight: 600, transition: "all 0.15s",
+                color: tab === id ? "#e5e5e5" : "#444",
+                borderBottom: tab === id ? "2px solid #22c55e" : "2px solid transparent" }}>
+              {lbl}
+              {id === "alerts" && alertCount > 0 && <span style={{ marginLeft: 6, background: "#ef4444", borderRadius: 3, padding: "1px 5px", fontSize: 9, color: "#fff", fontFamily: "'IBM Plex Mono',monospace" }}>{alertCount}</span>}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div style={{ padding:"20px 24px", maxWidth:1400, margin:"0 auto", animation:"fadeIn 0.3s ease" }}>
@@ -352,7 +359,7 @@ const OpsDashboard = ({ userName, token, onLogout }) => {
         {/* ───── OVERVIEW ───── */}
         {tab==="overview" && (<>
           {/* KPIs */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:12, marginBottom:20 }}>
+          <div className="grid-kpi">
             {[
               {lbl:"Fleet Health",  val:`${avgHealth}%`,   sub:`avg across ${ATM_DATA.length} ATMs`,    col:hc(avgHealth)},
               {lbl:"Active",        val:`${ATM_DATA.length-offlineCount}/${ATM_DATA.length}`, sub:`${offlineCount} offline`,   col: offlineCount>0?"#ef4444":"#22c55e"},
@@ -364,7 +371,7 @@ const OpsDashboard = ({ userName, token, onLogout }) => {
 
           {/* Fleet grid */}
           <SectionTitle>ATM Fleet Status</SectionTitle>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:20 }}>
+          <div className="grid-fleet">
             {ATM_DATA.map(atm => (
               <div key={atm.id} onClick={() => { setSelected(atm); setTab("atms"); }}
                 style={{ background:"#080808", border:`1px solid ${atm.health<55?"#2d0a0a":atm.health<80?"#1a1400":"#111"}`,
@@ -431,7 +438,7 @@ const OpsDashboard = ({ userName, token, onLogout }) => {
 
         {/* ───── FLEET / ATM DETAIL ───── */}
         {tab==="atms" && (
-          <div style={{ display:"grid", gridTemplateColumns: selected?"280px 1fr":"1fr", gap:16 }}>
+          <div className={selected ? "grid-ops-split" : "grid-ops-single"}>
             {/* List */}
             <div>
               <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
@@ -515,7 +522,7 @@ const OpsDashboard = ({ userName, token, onLogout }) => {
                     {lbl:"Cash Level",   v:`${selected.cashLevel}`, unit:"%", c:cc(selected.cashLevel), sub:`~${selected.daysToDepletion}d to depletion`},
                     {lbl:"Error Rate",   v:`${selected.errorRate}`, unit:"%", c:selected.errorRate>8?"#ef4444":selected.errorRate>4?"#f59e0b":"#22c55e", sub:`${selected.errorCount7d} errors / 7d`},
                     {lbl:"Txns 24h",     v:selected.transactions24h, unit:"", c:"#e5e5e5", sub:`${selected.transactionVelocity}/hr velocity`},
-                    {lbl:"Failure Risk", v:`${Math.round(selected.failureProbability*100)}`, unit:"%", c:selected.failureProbability>0.5?"#ef4444":selected.failureProbability>0.2?"#f59e0b":"#22c55e", sub:"7-day prediction"},
+                    {lbl:"Failure Risk", v:`${Math.round(selected.failureProbability*10000)/100}`, unit:"%", c:selected.failureProbability>0.5?"#ef4444":selected.failureProbability>0.2?"#f59e0b":"#22c55e", sub:"7-day prediction"},
                   ].map(m => (
                     <div key={m.lbl} style={{ background:"#050505", border:"1px solid #111", borderRadius:6, padding:"12px 14px" }}>
                       <div style={{ fontSize:10, color:"#444", marginBottom:4 }}>{m.lbl}</div>
@@ -716,14 +723,14 @@ const OpsDashboard = ({ userName, token, onLogout }) => {
 
           {/* Monthly inactive tx (Spar Nord insight) */}
           <div style={{ background:"#080808", border:"1px solid #111", borderRadius:8, padding:"20px 22px", marginBottom:16 }}>
-            <SectionTitle>Monthly Inactive Transaction Rate — Jan / Feb / Mar (Spar Nord Pattern)</SectionTitle>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10 }}>
+            <SectionTitle>Monthly Inactive Transaction Rate — {ATM_DATA[0]?.monthlyLabels?.join(" / ") || "Jan / Feb / Mar"} (Spar Nord Pattern)</SectionTitle>
+            <div className="grid-sparklines">
               {ATM_DATA.map(atm => (
                 <div key={atm.id} style={{ background:"#050505", borderRadius:6, padding:"12px" }}>
                   <div style={{ fontSize:10, color:"#60a5fa", fontFamily:"'IBM Plex Mono',monospace", marginBottom:8 }}>{atm.id}</div>
                   <MiniSparkline data={atm.monthlyInactive} color={atm.monthlyInactive[2]>20?"#ef4444":"#f59e0b"} h={40}/>
                   <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
-                    {["J","F","M"].map(m => <span key={m} style={{ fontSize:9, color:"#333", fontFamily:"'IBM Plex Mono',monospace" }}>{m}</span>)}
+                    {(atm.monthlyLabels || ["J","F","M"]).map(m => <span key={m} style={{ fontSize:9, color:"#333", fontFamily:"'IBM Plex Mono',monospace" }}>{m[0]}</span>)}
                   </div>
                   <div style={{ fontSize:11, color:atm.monthlyInactive[2]>20?"#ef4444":"#555", marginTop:6, fontFamily:"'IBM Plex Mono',monospace" }}>
                     {atm.monthlyInactive[2]} inactive
@@ -736,13 +743,15 @@ const OpsDashboard = ({ userName, token, onLogout }) => {
           {/* Transaction volume per ATM */}
           <div style={{ background:"#080808", border:"1px solid #111", borderRadius:8, padding:"20px 22px" }}>
             <SectionTitle>7-Day Transaction Volume — All ATMs (Sat spike reflects Spar Nord pattern)</SectionTitle>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10 }}>
+            <div className="grid-sparklines">
               {ATM_DATA.map(atm => (
                 <div key={atm.id} style={{ background:"#050505", borderRadius:6, padding:"12px" }}>
                   <div style={{ fontSize:10, color:"#60a5fa", fontFamily:"'IBM Plex Mono',monospace", marginBottom:8 }}>{atm.id}</div>
                   <MiniSparkline data={atm.weeklyTxns} color="#22c55e" h={48}/>
                   <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
-                    {["M","T","W","T","F","S","S"].map((d,i) => <span key={i} style={{ fontSize:8, color:i===5?"#22c55e":"#333", fontFamily:"'IBM Plex Mono',monospace" }}>{d}</span>)}
+                    {(atm.weeklyLabels || ["M","T","W","T","F","S","S"]).map((d,i) => (
+                      <span key={i} style={{ fontSize:8, color: d==="Sat"?"#22c55e":"#333", fontFamily:"'IBM Plex Mono',monospace" }}>{d[0]}</span>
+                    ))}
                   </div>
                   <div style={{ fontSize:11, color:"#555", marginTop:5, fontFamily:"'IBM Plex Mono',monospace" }}>{atm.transactions24h} today</div>
                 </div>
@@ -791,6 +800,7 @@ const DataManagementView = ({ token }) => {
         setStatus("success");
         setMessage("Success! Data ingested and models retrained.");
         setRetrainingResult(data);
+        if (window.triggerFleetRefresh) window.triggerFleetRefresh();
       } else {
         setStatus("error");
         setMessage(data.error || "Upload failed. Please check the file schema.");
@@ -840,7 +850,7 @@ const DataManagementView = ({ token }) => {
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16 }}>
+      <div className="grid-data-split">
         <div>
           <SectionTitle>Upload Training Data</SectionTitle>
           <div style={{ background: "#080808", border: "1px dashed #222", borderRadius: 12, padding: "40px", textAlign: "center", marginBottom: 16 }}>
@@ -945,8 +955,8 @@ const CustomerView = ({ onLogout }) => {
           building: a.building || a.name,
           short: a.short || a.name,
           status: a.status || "in_service",
-          health: Math.round(a.health || 75),
-          cashLevel: a.cash_level || 70,
+          health: Math.round((a.health != null ? a.health : 75) * 100) / 100,
+          cashLevel: Math.round((a.cash_level != null ? a.cash_level : 70) * 100) / 100,
           transactions24h: a.transactions_24h || 0,
           services: typeof a.services === 'string' && a.services.length > 0
             ? a.services.split(',').map(s => s.trim())
@@ -954,9 +964,9 @@ const CustomerView = ({ onLogout }) => {
           card_types: typeof a.card_types === 'string' && a.card_types.length > 0
             ? a.card_types.split(',').map(s => s.trim())
             : ["Visa", "Mastercard"],
-          uptime: a.uptime || 95,
-          daysToDepletion: a.days_to_depletion || 7,
-          hourlyTxns: a.hourlyTxns || [0,0,0,0,1,5,10,20,30,40,30,25,20,20,25,30,20,15,10,5,2,1,0,0],
+          uptime: Math.round((a.uptime != null ? a.uptime : 95) * 100) / 100,
+          daysToDepletion: Math.round(a.days_to_depletion != null ? a.days_to_depletion : 7),
+          hourlyTxns: a.historical_series?.hourly_txns || [0,0,0,0,1,5,10,20,30,40,30,25,20,20,25,30,20,15,10,5,2,1,0,0],
         }));
         setAtms(mapped);
         setLoading(false);
@@ -989,7 +999,7 @@ const CustomerView = ({ onLogout }) => {
       <style>{`* { box-sizing:border-box; } input:focus { outline:none; } @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }`}</style>
 
       {/* Header */}
-      <div style={{ background:"#000", padding:"0 24px", height:52, display:"flex", alignItems:"center", gap:14 }}>
+      <div style={{ background:"rgba(0, 0, 0, 0.8)", backdropFilter:"blur(12px)", padding:"0 24px", height:52, display:"flex", alignItems:"center", gap:14, position:"sticky", top:0, zIndex:100, borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
         <span style={{ fontSize:15, color:"#22c55e" }}>◈</span>
         <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:13, fontWeight:600, color:"#e5e5e5", letterSpacing:2 }}>AIAP</span>
         <span style={{ fontSize:11, color:"#444" }}>ATM Finder · UWI Mona</span>
@@ -1034,8 +1044,8 @@ const CustomerView = ({ onLogout }) => {
         </div>
 
         {/* ATM Cards Grid */}
-        <div style={{ display:"grid", gridTemplateColumns: selected?"1fr 360px":"1fr", gap:16, alignItems:"start" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:14 }}>
+        <div className={selected ? "grid-customer-split" : "grid-customer-single"}>
+          <div className="grid-customer-cards">
             {filtered.map(atm => {
               const isSelected = selected?.id===atm.id;
               const isOffline = atm.status!=="in_service";
@@ -1212,17 +1222,33 @@ const CustomerView = ({ onLogout }) => {
 // ── APP ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const [auth, setAuth] = useState(() => {
-    // Restore session from localStorage
-    const saved = localStorage.getItem('aiap_token');
-    return saved ? { role: 'ops', name: 'Ops Admin', token: saved } : null;
+    // Restore session and role from localStorage
+    const savedRole = localStorage.getItem('aiap_role');
+    const savedName = localStorage.getItem('aiap_name');
+    
+    if (savedRole === 'customer') {
+      return { role: 'customer', name: savedName || 'Campus User', token: null };
+    }
+    
+    const savedToken = localStorage.getItem('aiap_token');
+    if (savedRole === 'ops' && savedToken) {
+      return { role: 'ops', name: savedName || 'Ops Admin', token: savedToken };
+    }
+    
+    return null;
   });
 
   const handleLogin = (role, name, token) => {
+    localStorage.setItem('aiap_role', role);
+    localStorage.setItem('aiap_name', name);
+    if (token) localStorage.setItem('aiap_token', token);
     setAuth({ role, name, token });
   };
 
   const handleLogout = () => {
     localStorage.removeItem('aiap_token');
+    localStorage.removeItem('aiap_role');
+    localStorage.removeItem('aiap_name');
     ATM_DATA = [];
     MAINTENANCE_QUEUE = [];
     ALERTS = [];

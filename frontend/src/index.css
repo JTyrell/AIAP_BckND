@@ -1,6 +1,111 @@
-/* Reset only — the Prototype_V2 component manages its own styles inline */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html, body, #root {
+  min-height: 100vh;
+  /* Prevent horizontal scrolling on mobile */
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Prevent whitespace bounce on mobile iOS / Android scroll */
+body {
+  background-color: #0b1535;
+}
+
+/* ── UI GRID CLASSES FOR RESPONSIVE DESIGN ── */
+
+.grid-kpi {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.grid-fleet {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.grid-ops-split {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+}
+
+.grid-ops-single {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.grid-sparklines {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.grid-data-split {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 16px;
+}
+
+.grid-customer-split {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 16px;
+  align-items: start;
+}
+
+.grid-customer-single {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.grid-customer-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.login-box {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  padding: 40px 36px;
+  background: #080808;
+  border: 1px solid #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 0 0 60px rgba(0,0,0,0.8);
+}
+
+@media (max-width: 1100px) {
+  .grid-kpi { grid-template-columns: repeat(3, 1fr); }
+  .grid-fleet { grid-template-columns: repeat(2, 1fr); }
+  .grid-sparklines { grid-template-columns: repeat(3, 1fr); }
+  .grid-ops-split { grid-template-columns: 1fr; }
+  .grid-customer-split { grid-template-columns: 1fr; }
+  .grid-data-split { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .grid-kpi { grid-template-columns: repeat(2, 1fr); }
+  .grid-fleet { grid-template-columns: 1fr; }
+  .grid-sparklines { grid-template-columns: repeat(2, 1fr); }
+  
+  /* Mobile padding adjustments */
+  .mobile-padding { padding: 16px !important; }
+}
+
+@media (max-width: 480px) {
+  .grid-kpi { grid-template-columns: 1fr; }
+  .grid-sparklines { grid-template-columns: 1fr; }
 }
