@@ -27,18 +27,29 @@ ENV/
 .ruff_cache/
 
 # Large Data & Local Folders
+backend/data/datasets/
+backend/data/raw_backup/
 data/raw/
 data/raw_backup/
 augmented_data/
 scratch/
 *.xlsx
-*.csv
 *.sqlite3
 *.db
 
 # ML Models & Processed Data
-ml_engine/saved_models/*.joblib
+backend/ml_engine/saved_models/*.joblib
+backend/data/processed/
 data/processed/
+
+# Test Suites (local dev only, not for production)
+tests/
+backend/tests/
+
+# Legacy root-level scratch files
+restructure.py
+fix_scripts.py
+AIAP_Prototype_V2.jsx
 
 # System / IDE
 .vscode/
@@ -50,3 +61,9 @@ Thumbs.db
 *.tmp
 *.log
 
+tests_private/  
+backend/scripts/test_suite.py 
+
+# Markdown Files
+*.md
+!README.md

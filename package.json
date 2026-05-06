@@ -5,11 +5,14 @@
   "scripts": {
     "postinstall": "npm run install:frontend && npm run install:backend",
     "install:frontend": "cd frontend && npm install",
-    "install:backend": "pip install -r requirements.txt",
+    "install:backend": "cd backend && pip install -r requirements.txt",
     "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "python app.py",
+    "dev:backend": "cd backend && python app.py",
     "dev": "npx concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "build": "cd frontend && npm run build"
+    "build": "npx concurrently \"npm run build:frontend\" \"npm run test:backend\"",
+    "test": "npm run test:backend",
+    "test:backend": "cd backend && python tests/run_tests.py",
+    "build:frontend": "cd frontend && npm run build"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
