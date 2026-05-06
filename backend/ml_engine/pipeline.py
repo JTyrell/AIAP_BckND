@@ -358,7 +358,11 @@ def predict_for_atm(atm_id, data_provider=None, precomputed_df=None):
 
     # Extract historical series for sparklines
     # Align specifically to Sunday-Saturday calendar view
-    now_date = pd.Timestamp.now().normalize()
+    if not atm_feat.empty and 'record_date' in atm_feat.columns:
+        now_date = atm_feat['record_date'].max().normalize()
+    else:
+        now_date = pd.Timestamp.now().normalize()
+        
     weekly_txns = [0] * 7
     base_labels = ["s", "m", "t", "w", "t", "f", "s"]
     
