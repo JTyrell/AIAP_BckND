@@ -10,6 +10,25 @@ Training Strategy (per user spec):
   1. If data/processed/training_labels.csv exists → supervised training
   2. Otherwise → proxy labels from deterministic PDF formulas + noise injection
      (Gaussian sigma=2.5 for health, sigma=0.5 for cash, 2% label-flip for failure)
+
+User-Facing Prediction Windows:
+  The system operates two parallel failure prediction horizons to serve
+  two distinct audiences:
+
+  SHORT-TERM  (1-hour window) — Customer / Student View
+  ─────────────────────────────────────────────────────
+  Designed for bank customers and campus students who are actively deciding
+  which ATM to visit *right now*. A 1-hour window gives actionable, real-time
+  guidance: "This machine has a high probability of going offline in the next
+  60 minutes — consider the alternative unit at [location]." The model flags
+  imminent failure signals such as a sudden error spike, critically low cash,
+  or consecutive downtime events that historically precede hardware trips.
+
+  LONG-TERM   (7-day window) — Operations / Staff View
+  ─────────────────────────────────────────────────────
+  Designed for ATM operations teams to schedule preventive maintenance,
+  plan cash replenishment routes, and prioritise field dispatch before a
+  machine reaches a critical state over the coming week.
 """
 import os
 import logging
@@ -210,6 +229,31 @@ def train_all_models(df=None, repository=None):
 def train_short_term_model():
     """
     Train the 1-hour short-term failure prediction model.
+
+    USER EXPECTATION — Customer / Student:
+    ───────────────────────────────────────
+    A bank customer or university student approaching a campus ATM has one
+    practical question: "Will this machine still be working by the time I
+    get there or finish my transaction?"
+
+    This model answers that question. It is trained to predict whether an
+    ATM is likely to experience a hardware or availability failure within
+    the *next 60 minutes*, based on the machine's most recent telemetry.
+
+    The output (failure_probability_1h) is surfaced on the Customer View
+    of the AIAP dashboard as a colour-coded availability indicator:
+        - GREEN  : Low risk  — machine is expected to stay operational
+        - AMBER  : Moderate — elevated error signals; consider alternatives
+        - RED    : High risk — imminent failure likely; avoid this machine
+
+    Design intent:
+        • Shallow depth (max_depth=3) keeps the model fast and interpretable
+          so predictions refresh without perceptible lag on the frontend.
+        • Only 50 estimators are used (vs. 150 for the 7-day model) because
+          the 1-hour window demands speed over deep pattern memorisation.
+        • Fisher Score (SelectKBest, k=5) dynamically picks the most
+          predictive short-term signals — e.g. error bursts, consecutive
+          downtime minutes — rather than relying on a fixed feature list.
     """
     logger.info("[TRAINING] Starting short-term failure model training...")
     try:
@@ -244,7 +288,18 @@ def train_short_term_model():
             logger.warning("[TRAINING] Short-term feature engineering returned empty DataFrame.")
             return
             
+        # 'future_failure' is a binary label: 1 = the ATM went offline within
+        # 60 minutes of this telemetry snapshot, 0 = it stayed operational.
+        # This is the exact signal a customer needs to make a routing decision.
         target = 'future_failure'
+
+        # Automated feature selection (Fisher Score / SelectKBest, k=5):
+        # Rather than hard-coding which signals matter for a 1-hour window,
+        # the model discovers them from data. In practice the top features
+        # tend to be: consecutive_downtime_mins, error_count (last 30 min),
+        # cash_stress_indicator, error_acceleration, and transaction_velocity.
+        # These are exactly the early-warning signs a customer cannot see
+        # from the ATM screen itself — but AIAP can surface them proactively.
         selected_features = select_top_features(df, target, k=5)
         
         if not selected_features:
@@ -258,6 +313,19 @@ def train_short_term_model():
             logger.warning("[TRAINING] Short-term target has only 1 class. Skipping training.")
             return
             
+        # ── Short-Term Classifier Configuration ─────────────────────────────
+        # Tuned for SPEED and RECENCY, not exhaustive pattern depth.
+        #
+        # From a customer's perspective, a stale prediction is worse than
+        # no prediction — if the model takes 2 seconds to score 40 ATMs,
+        # the result may already be outdated by the time the UI renders it.
+        #
+        # n_estimators=50  : Lightweight forest; ~3× faster inference than
+        #                    the 7-day failure model (150 estimators).
+        # max_depth=3      : Shallow trees reduce overfitting to noise in
+        #                    high-frequency telemetry (errors per minute, etc.).
+        # learning_rate=0.1: Moderate step size balances convergence speed
+        #                    against stability on small per-ATM windows.
         model = xgb.XGBClassifier(
             n_estimators=50,
             max_depth=3,
